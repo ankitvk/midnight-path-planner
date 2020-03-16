@@ -9,7 +9,6 @@ const fieldViewPort = {
     height: fieldViewHeight,
     border: '3px solid black',
     float: 'left',
-    backgroundColor: 'black',
 };
 
 const buttonStyle = {
@@ -31,15 +30,7 @@ const divButtonStyle = {
 function App() {
 
   return (
-      <div>
-          <div style={fieldViewPort}>
               <Field />
-              <div style={divButtonStyle}>
-                  <button style={buttonStyle}>Test</button>
-              </div>
-
-          </div>
-      </div>
   );
 }
 

@@ -6,85 +6,96 @@ import Immutable from "immutable";
 const fieldViewHeight = '90vh';
 const fieldViewWidth = '50vw';
 
-const DrawingLine = (props) => {
-    const pathData = "M " + props.line
-        .map(p => {
-            return `${p.get('x')} ${p.get('y')}`
-        })
-        .join(" L ");
-    console.log("in DrawingLine", pathData);
-    return <path className="path" d={pathData} />;
-};
 
 export default class Field extends React.Component {
-
     constructor(props) {
         super(props);
         this.state = {
-            isDrawing: false,
-            lines: new Immutable.List()
+            lines: new Immutable.List(),
+            isDrawing: false
         };
+
         this.handleMouseDown = this.handleMouseDown.bind(this);
+        this.handleMouseMove = this.handleMouseMove.bind(this);
+        this.handleMouseUp = this.handleMouseUp.bind(this);
     }
 
-    state = {
-        isDrawing: false,
-        lines: new Immutable.List()
-    };
+    componentDidMount() {
+        document.addEventListener("mouseup", this.handleMouseUp);
+    }
 
-    fieldDivStyle = {
-        width: fieldViewWidth,
-        height: fieldViewHeight,
-        float: 'left'
-    };
+    componentWillUnmount() {
+        document.removeEventListener("mouseup", this.handleMouseUp);
+    }
 
-    initScale = 0.4;
+    handleMouseDown(mouseEvent) {
+        if (mouseEvent.button != 0) {
+            return;
+        }
 
-    relativeCoordinatesForEvent(event) {
+        const point = this.relativeCoordinatesForEvent(mouseEvent);
+
+        this.setState(prevState => ({
+            lines: prevState.lines.push(new Immutable.List([point])),
+            isDrawing: true
+        }));
+    }
+
+    handleMouseMove(mouseEvent) {
+        if (!this.state.isDrawing) {
+            return;
+        }
+
+        const point = this.relativeCoordinatesForEvent(mouseEvent);
+
+        this.setState(prevState =>  ({
+            lines: prevState.lines.updateIn([prevState.lines.size - 1], line => line.push(point))
+        }));
+    }
+
+    handleMouseUp() {
+        this.setState({ isDrawing: false });
+    }
+
+    relativeCoordinatesForEvent(mouseEvent) {
+        const boundingRect = this.refs.drawArea.getBoundingClientRect();
         return new Immutable.Map({
-            x: event.clientX ,
-            y: event.clientY ,
+            x: mouseEvent.clientX - boundingRect.left,
+            y: mouseEvent.clientY - boundingRect.top,
         });
     }
-    handleMouseDown = (event) => {
-        if (event.button !== 0) return;
-        const point = this.relativeCoordinatesForEvent(event);
-        this.setState(prevState => {
-            return {
-                lines: prevState.lines.push(new Immutable.List([point])),
-                isDrawing: true,
-            }
-        })
-    };
 
     render() {
         return (
-            <TransformWrapper
-                defaultScale={this.initScale}
-                defaultPositionX={0}
-                defaultPositionY={0}
-
-                pan={{
-                    velocity: false
-                }}
-                options={{
-                    limitToWrapper: false,
-                    limitToBounds: false,
-                    minScale: this.initScale,
-                    maxScale: 10,
-                }}
+            <div
+                className="drawArea"
+                ref="drawArea"
+                onMouseDown={this.handleMouseDown}
+                onMouseMove={this.handleMouseMove}
             >
-                <TransformComponent>
-                    <div style={this.fieldDivStyle} onMouseDown={this.handleMouseDown}>
-                        <img src={field_img}/>
-                        <svg className="drawing">
-                            {this.state.lines.map((line, index) => (
-                                <DrawingLine key={index} line={line} />
-                            ))}
-                        </svg>
-                    </div>
-                </TransformComponent>
-            </TransformWrapper>
+                <Drawing lines={this.state.lines} />
+            </div>
         );
     }
+}
+
+function Drawing({ lines }) {
+    return (
+        <svg className="drawing">
+            {lines.map((line, index) => (
+                <DrawingLine key={index} line={line} />
+            ))}
+        </svg>
+    );
+}
+
+function DrawingLine({ line }) {
+    const pathData = "M " +
+        line
+            .map(p => {
+                return `${p.get('x')} ${p.get('y')}`;
+            })
+            .join(" L ");
+
+    return <path className="path" d={pathData} />;
 }
